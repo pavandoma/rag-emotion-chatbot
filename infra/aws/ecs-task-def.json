@@ -1,0 +1,40 @@
+{
+  "family": "rag-emotion-chatbot",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "2048",
+  "memory": "6144",
+  "containerDefinitions": [
+    {
+      "name": "api",
+      "image": "<account-id>.dkr.ecr.<region>.amazonaws.com/rag-emotion-chatbot-api:latest",
+      "portMappings": [{ "containerPort": 8000, "protocol": "tcp" }],
+      "environment": [
+        { "name": "OLLAMA_HOST", "value": "http://localhost:11434" },
+        { "name": "OLLAMA_MODEL", "value": "llama3.2:3b" },
+        { "name": "CHROMA_PERSIST_DIR", "value": "/app/data/chroma_db" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/rag-emotion-chatbot",
+          "awslogs-region": "<region>",
+          "awslogs-stream-prefix": "api"
+        }
+      }
+    },
+    {
+      "name": "ollama",
+      "image": "ollama/ollama:latest",
+      "portMappings": [{ "containerPort": 11434, "protocol": "tcp" }],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/rag-emotion-chatbot",
+          "awslogs-region": "<region>",
+          "awslogs-stream-prefix": "ollama"
+        }
+      }
+    }
+  ]
+}

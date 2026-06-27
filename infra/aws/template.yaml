@@ -1,0 +1,66 @@
+# Illustrative AWS SAM template -- validates with `sam validate`, was never
+# deployed (`sam deploy`) against a live AWS account. See DEPLOYMENT.md.
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: RAG Emotion-Aware Conversational Assistant - illustrative ECS Fargate deployment
+
+Parameters:
+  ImageUri:
+    Type: String
+    Description: ECR image URI for the FastAPI app container
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+
+Resources:
+  ApiCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: rag-emotion-chatbot-cluster
+
+  ApiTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: rag-emotion-chatbot-api
+      Cpu: "1024"
+      Memory: "3072"
+      NetworkMode: awsvpc
+      RequiresCompatibilities: [FARGATE]
+      ContainerDefinitions:
+        - Name: api
+          Image: !Ref ImageUri
+          PortMappings:
+            - ContainerPort: 8000
+          Environment:
+            - Name: OLLAMA_HOST
+              Value: http://localhost:11434
+            - Name: OLLAMA_MODEL
+              Value: llama3.2:3b
+
+  ApiService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: rag-emotion-chatbot-api-service
+      Cluster: !Ref ApiCluster
+      TaskDefinition: !Ref ApiTaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          Subnets: !Ref SubnetIds
+          AssignPublicIp: ENABLED
+
+  ApiLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: rag-emotion-chatbot-alb
+      Subnets: !Ref SubnetIds
+      Scheme: internet-facing
+      Type: application
+
+Outputs:
+  ClusterName:
+    Value: !Ref ApiCluster
+  LoadBalancerDNS:
+    Value: !GetAtt ApiLoadBalancer.DNSName
